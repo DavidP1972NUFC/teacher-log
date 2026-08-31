@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teacher Log</title>
+<style>
+:root{
+  --bg:#f5f7fb; --panel:#fff; --text:#18212f; --muted:#6b7280; --border:#dfe4ea;
+  --accent:#2656d8; --accent2:#e9efff; --danger:#b42318; --dangerbg:#fff0ee;
+  --success:#067647; --successbg:#ecfdf3; --shadow:0 8px 24px rgba(20,30,55,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:1100px;margin:auto;padding:18px}
+.topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap}
+.brand{font-size:24px;font-weight:700}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav button,.btn{border:1px solid var(--border);background:#fff;color:var(--text);padding:10px 14px;border-radius:10px}
+.nav button.active,.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.danger{color:var(--danger);border-color:#f0b7b2;background:#fff}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.hidden{display:none!important}
+h1,h2,h3{margin-top:0}
+.sub{color:var(--muted);margin-top:-6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.class-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff}
+.class-card h3{margin-bottom:6px}
+.meta{color:var(--muted);font-size:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+input[type=text],input[type=number],select,textarea{
+  width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 12px;background:#fff;color:var(--text)
+}
+textarea{min-height:150px;resize:vertical}
+label{font-weight:600;display:block;margin-bottom:6px}
+.form-group{margin-bottom:14px}
+.student-row{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:14px;align-items:center;border-bottom:1px solid var(--border);padding:12px 0}
+.student-row:last-child{border-bottom:none}
+.student-name{font-weight:700}
+.student-meta{font-size:13px;color:var(--muted);margin-top:3px}
+.codes{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.code-btn{min-width:42px;height:42px;border-radius:10px;border:1px solid var(--border);background:#fff;font-weight:700}
+.code-btn.pos{background:var(--successbg);color:var(--success);border-color:#b7e3ce}
+.code-btn.neg{background:#fff;color:var(--text)}
+.flag{display:inline-block;margin-left:6px;color:var(--danger);font-weight:700}
+.toast{margin:12px 0;padding:12px 14px;border-radius:10px;background:var(--dangerbg);color:var(--danger);font-weight:700}
+.settings-table{width:100%;border-collapse:collapse}
+.settings-table th,.settings-table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+.settings-table th{font-size:13px;color:var(--muted)}
+.code-pill{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;border-radius:9px;background:var(--accent2);font-weight:800}
+.mini{padding:7px 9px;border-radius:8px;border:1px solid var(--border);background:#fff}
+.check{width:20px;height:20px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.badge.pos{background:var(--successbg);color:var(--success)}
+.badge.neg{background:#f3f4f6}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.history-item{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+@media(max-width:700px){
+ .app{padding:10px}
+ .student-row{grid-template-columns:1fr}
+ .codes{justify-content:flex-start}
+ .settings-table thead{display:none}
+ .settings-table,.settings-table tbody,.settings-table tr,.settings-table td{display:block;width:100%}
+ .settings-table tr{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px}
+ .settings-table td{border:0;padding:6px 0}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app">
+  <section id="syncSetup" class="panel" style="margin-bottom:18px">
+    <h2>Teacher Log Sync</h2>
+    <p class="sub">Connect this app to your Supabase project. Your Project URL and Publishable Key are designed for use in the app; never enter a secret/service-role key here.</p>
+    <div id="connectionFields">
+      <div class="form-group"><label for="sbUrl">Project URL</label><input id="sbUrl" type="text" placeholder="https://xxxxxxxx.supabase.co"></div>
+      <div class="form-group"><label for="sbKey">Publishable key</label><input id="sbKey" type="text" placeholder="sb_publishable_..."></div>
+      <button class="btn primary" id="saveConnection">Save connection</button>
+    </div>
+    <div id="loginFields" class="hidden">
+      <div class="grid">
+        <div class="form-group"><label for="loginEmail">Email</label><input id="loginEmail" type="text"></div>
+        <div class="form-group"><label for="loginPassword">Password</label><input id="loginPassword" type="password" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 12px"></div>
+      </div>
+      <div class="row"><button class="btn primary" id="signIn">Sign in</button><button class="btn" id="signUp">Create account</button></div>
+    </div>
+    <div id="syncStatus" class="meta" style="margin-top:10px"></div>
+  </section>
+  <div id="mainApp" class="hidden">
+  <div class="topbar">
+    <div class="brand">Teacher Log</div>
+    <div class="nav">
+      <button data-view="classes" class="active">Classes</button>
+      <button data-view="students">Students</button>
+      <button data-view="history">History</button>
+      <button data-view="export">Export</button>
+      <button data-view="settings">Settings</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <section id="classes" class="panel view">
+    <div class="row">
+      <div>
+        <h2>Classes</h2>
+        <div class="sub">Choose a class and record behaviours whenever you need to.</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn primary" id="addClassBtn">+ Add class</button>
+    </div>
+    <div id="classGrid" class="grid" style="margin-top:16px"></div>
+  </section>
+
+  <section id="lesson" class="panel view hidden">
+    <div class="row">
+      <button class="btn" id="backClasses">← Classes</button>
+      <div>
+        <h2 id="lessonTitle" style="margin-bottom:4px"></h2>
+        <div class="sub" id="lessonDate"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div id="studentRows" style="margin-top:10px"></div>
+  </section>
+
+  <section id="students" class="panel view hidden">
+    <h2>Student records</h2>
+    <div class="sub">Select a student to see their recorded history.</div>
+    <div class="form-group" style="margin-top:16px">
+      <select id="studentSelect"></select>
+    </div>
+    <div id="studentSummary"></div>
+    <div id="studentHistory"></div>
+  </section>
+
+
+  <section id="history" class="panel view hidden">
+    <h2>History</h2>
+    <p class="sub">Review behaviour records by class, student, date or behaviour code.</p>
+    <div class="grid" style="margin-top:16px">
+      <div class="form-group">
+        <label for="histClass">Class</label>
+        <select id="histClass"></select>
+      </div>
+      <div class="form-group">
+        <label for="histStudent">Student</label>
+        <select id="histStudent"></select>
+      </div>
+      <div class="form-group">
+        <label for="histCode">Behaviour</label>
+        <select id="histCode"></select>
+      </div>
+      <div class="form-group">
+        <label for="histFrom">From</label>
+        <input id="histFrom" type="date">
+      </div>
+      <div class="form-group">
+        <label for="histTo">To</label>
+        <input id="histTo" type="date">
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="clearHistFilters">Clear filters</button>
+      <div class="spacer"></div>
+      <strong id="histCount"></strong>
+    </div>
+    <div id="classTotalsWrap" class="hidden" style="margin-bottom:18px">
+      <h3>Class running totals</h3>
+      <div class="sub">Totals for the selected class and date range.</div>
+      <div style="overflow-x:auto;margin-top:10px">
+        <table class="settings-table" id="classTotalsTable"></table>
+      </div>
+    </div>
+    <div id="historySummary"></div>
+    <div id="historyList"></div>
+  </section>
+
+  <section id="export" class="panel view hidden">
+    <h2>Export</h2>
+    <p class="sub">Download your records as CSV for Excel or report-writing.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="exportDetailed">Download detailed CSV</button>
+      <button class="btn" id="exportSummary">Download summary CSV</button>
+    </div>
+  </section>
+
+  <section id="settings" class="panel view hidden">
+    <h2>Behaviour codes</h2>
+    <p class="sub">Edit the code, description, type, and whether it counts towards the behaviour threshold.</p>
+
+    <div class="row" style="margin:16px 0">
+      <div style="min-width:180px">
+        <label for="threshold">Flag threshold</label>
+        <input id="threshold" type="number" min="1" max="99">
+      </div>
+      <div class="spacer"></div>
+      <button class="btn primary" id="addCodeBtn">+ Add behaviour code</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="settings-table">
+        <thead><tr><th>Code</th><th>Description</th><th>Type</th><th>Counts?</th><th>Order</th><th></th></tr></thead>
+        <tbody id="codeTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="classEditor" class="panel view hidden">
+    <div class="row">
+      <button class="btn" id="cancelClass">← Back</button>
+      <h2 id="classEditorTitle" style="margin:0">Add class</h2>
+    </div>
+    <div style="margin-top:16px">
+      <div class="form-group">
+        <label for="className">Class name</label>
+        <input id="className" type="text" placeholder="e.g. 10C Chemistry">
+      </div>
+      <div class="form-group">
+        <label for="classStudents">Paste student names</label>
+        <textarea id="classStudents" placeholder="One student per line, or paste a single column from Excel"></textarea>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="saveClass">Save class</button>
+        <button class="btn danger hidden" id="deleteClass">Delete class</button>
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+
+<script>
+(() => {
+const KEY='teacherLogConfigurableV1';
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const uid=()=>crypto.randomUUID();
+
+const defaults={
+  threshold:3,
+  codes:[
+    {id:uid(),code:'L',desc:'Late',type:'negative',counts:true},
+    {id:uid(),code:'E',desc:'No equipment',type:'negative',counts:true},
+    {id:uid(),code:'F',desc:'File forgotten',type:'negative',counts:true},
+    {id:uid(),code:'H',desc:'Homework missing',type:'negative',counts:true},
+    {id:uid(),code:'T',desc:'Talking',type:'negative',counts:true},
+    {id:uid(),code:'O',desc:'Off task',type:'negative',counts:true},
+    {id:uid(),code:'W',desc:'Warning',type:'negative',counts:true},
+    {id:uid(),code:'+',desc:'Positive contribution',type:'positive',counts:false}
+  ],
+  classes:[],
+  records:[]
+};
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY));
+    if(x&&Array.isArray(x.classes)&&Array.isArray(x.codes)&&Array.isArray(x.records)) return x;
+  }catch(e){}
+  return defaults;
+}
+let state=load(), currentClassId=null, editClassId=null;
+let sb=null, sbUser=null, syncing=false;
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(state));
+  if(sbUser && !syncing) pushAll().catch(e=>flash("Sync error: "+e.message));
+}
+function connection(){
+  return {url:localStorage.getItem('teacherLogSbUrl')||'',key:localStorage.getItem('teacherLogSbKey')||''};
+}
+function initClient(){
+  const c=connection();
+  if(!c.url||!c.key||!window.supabase) return false;
+  sb=window.supabase.createClient(c.url,c.key); return true;
+}
+function withTimeout(promise, ms=12000){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('Supabase did not respond within 12 seconds')),ms))
+  ]);
+}
+async function pullAll(){
+  if(!sbUser)return;
+  syncing=true;
+  try{
+    const [cl,st,co,re,se]=await withTimeout(Promise.all([
+      sb.from('classes').select('*').order('created_at'),
+      sb.from('students').select('*').order('created_at'),
+      sb.from('behaviour_codes').select('*').order('display_order'),
+      sb.from('behaviour_records').select('*').order('created_at'),
+      sb.from('settings').select('*').maybeSingle()
+    ]));
+    for(const x of [cl,st,co,re,se]) if(x.error) throw x.error;
+    state.classes=(cl.data||[]).map(c=>({id:c.id,name:c.name,students:(st.data||[]).filter(s=>s.class_id===c.id).map(s=>({id:s.id,name:s.name}))}));
+    state.codes=(co.data||[]).map(c=>({id:c.id,code:c.code,desc:c.description,type:c.behaviour_type,counts:c.counts_towards_threshold}));
+    state.records=(re.data||[]).map(r=>({id:r.id,date:r.behaviour_date,classId:r.class_id,studentId:r.student_id,codeId:r.behaviour_code_id}));
+    state.threshold=se.data?.behaviour_threshold||3;
+    localStorage.setItem(KEY,JSON.stringify(state));
+  } finally { syncing=false; }
+}
+async function pushAll(){
+  if(!sbUser)return;
+  syncing=true;
+  try{
+    // Upsert current app data. Deletes are handled explicitly elsewhere by local UI only in this prototype.
+    if(state.classes.length){
+      let x=await sb.from('classes').upsert(state.classes.map(c=>({id:c.id,user_id:sbUser.id,name:c.name}))); if(x.error)throw x.error;
+      const students=state.classes.flatMap(c=>c.students.map(s=>({id:s.id,user_id:sbUser.id,class_id:c.id,name:s.name})));
+      if(students.length){x=await sb.from('students').upsert(students);if(x.error)throw x.error;}
+    }
+    if(state.codes.length){
+      let x=await sb.from('behaviour_codes').upsert(state.codes.map((c,i)=>({id:c.id,user_id:sbUser.id,code:c.code,description:c.desc,behaviour_type:c.type,counts_towards_threshold:c.counts,display_order:i})));if(x.error)throw x.error;
+    }
+    if(state.records.length){
+      let x=await sb.from('behaviour_records').upsert(state.records.map(r=>({id:r.id,user_id:sbUser.id,class_id:r.classId,student_id:r.studentId,behaviour_code_id:r.codeId,behaviour_date:r.date})));if(x.error)throw x.error;
+    }
+    let x=await sb.from('settings').upsert({user_id:sbUser.id,behaviour_threshold:state.threshold});if(x.error)throw x.error;
+    document.getElementById('syncStatus').textContent='Synced';
+  } finally { syncing=false; }
+}
+async function afterAuth(user){
+  sbUser=user;
+  document.getElementById('connectionFields').classList.add('hidden');
+  document.getElementById('loginFields').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  const status=document.getElementById('syncStatus');
+  try{
+    status.textContent='Signed in — reading cloud data…';
+    await pullAll();
+    status.textContent='Cloud data read — preparing first sync…';
+    if(!state.classes.length && !state.codes.length){
+      state=JSON.parse(JSON.stringify(defaults));
+      status.textContent='Preparing your Teacher Log…';
+      await pushAll();
+    }
+    renderClasses();
+    status.textContent='Signed in and synced';
+  }catch(e){
+    console.error(e);
+    status.textContent='Sync error: '+(e?.message||String(e));
+    flash('Sync error: '+(e?.message||String(e)));
+  }
+}
+
+function show(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+  document.getElementById(view).classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  if(view==='classes') renderClasses();
+  if(view==='students') renderStudentSelect();
+  if(view==='history') renderHistoryFilters();
+  if(view==='settings') renderSettings();
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
+
+function flash(msg){
+  const status=document.getElementById('syncStatus');
+  if(status) status.textContent=msg;
+  const el=document.getElementById('toast');
+  if(el){ el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),4000); }
+}
+function validEmail(x){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)}
+
+
+function classById(id){return state.classes.find(c=>c.id===id)}
+function allStudents(){
+  return state.classes.flatMap(c=>c.students.map(s=>({classId:c.id,className:c.name,...s})));
+}
+function countForStudent(studentId){
+  const countingIds=new Set(state.codes.filter(c=>c.type==='negative'&&c.counts).map(c=>c.id));
+  return state.records.filter(r=>r.studentId===studentId&&countingIds.has(r.codeId)).length;
+}
+
+function renderClasses(){
+  const grid=document.getElementById('classGrid');
+  grid.innerHTML='';
+  if(!state.classes.length){grid.innerHTML='<div class="empty">No classes yet. Add your first class.</div>';return}
+  state.classes.forEach(c=>{
+    const card=document.createElement('div');card.className='class-card';
+    card.innerHTML=`<h3>${esc(c.name)}</h3><div class="meta">${c.students.length} students</div>
+      <div class="row" style="margin-top:14px"><button class="btn primary open">Open</button><button class="btn edit">Edit</button></div>`;
+    card.querySelector('.open').addEventListener('click',()=>openClass(c.id));
+    card.querySelector('.edit').addEventListener('click',()=>editClass(c.id));
+    grid.appendChild(card);
+  })
+}
+function openClass(id){
+  currentClassId=id; const c=classById(id); if(!c)return;
+  document.getElementById('lessonTitle').textContent=c.name;
+  document.getElementById('lessonDate').textContent=fmtDate(today());
+  const box=document.getElementById('studentRows'); box.innerHTML='';
+  c.students.forEach(s=>{
+    const n=countForStudent(s.id);
+    const row=document.createElement('div');row.className='student-row';
+    const left=document.createElement('div');
+    left.innerHTML=`<div class="student-name">${esc(s.name)} ${n>=state.threshold?'<span class="flag">⚑ '+n+'</span>':''}</div>
+      <div class="student-meta">${n} counting behaviour${n===1?'':'s'}</div>`;
+    const codes=document.createElement('div');codes.className='codes';
+    state.codes.forEach(code=>{
+      const b=document.createElement('button'); b.type='button'; b.className='code-btn '+(code.type==='positive'?'pos':'neg');
+      b.textContent=code.code;b.title=code.desc;
+      b.addEventListener('click',()=>recordBehaviour(s.id,code.id));
+      codes.appendChild(b);
+    });
+    row.append(left,codes);box.appendChild(row);
+  });
+  show('lesson');
+}
+function recordBehaviour(studentId,codeId){
+  const c=classById(currentClassId), s=c.students.find(x=>x.id===studentId), code=state.codes.find(x=>x.id===codeId);
+  state.records.push({id:uid(),date:today(),classId:c.id,studentId:s.id,codeId:code.id});
+  save();
+  const n=countForStudent(s.id);
+  if(code.type==='negative'&&code.counts&&n>=state.threshold) flash(`⚑ ${s.name} has reached ${n} counting behaviours`);
+  openClass(c.id);
+}
+document.getElementById('backClasses').addEventListener('click',()=>show('classes'));
+
+function editClass(id=null){
+  editClassId=id;const c=id?classById(id):null;
+  document.getElementById('classEditorTitle').textContent=c?'Edit class':'Add class';
+  document.getElementById('className').value=c?c.name:'';
+  document.getElementById('classStudents').value=c?c.students.map(s=>s.name).join('\n'):'';
+  document.getElementById('deleteClass').classList.toggle('hidden',!c);
+  show('classEditor');
+}
+document.getElementById('addClassBtn').addEventListener('click',()=>editClass());
+document.getElementById('cancelClass').addEventListener('click',()=>show('classes'));
+document.getElementById('saveClass').addEventListener('click',()=>{
+  const name=document.getElementById('className').value.trim();
+  const names=document.getElementById('classStudents').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!name||!names.length){flash('Enter a class name and at least one student.');return}
+  if(editClassId){
+    const c=classById(editClassId); const oldMap=new Map(c.students.map(s=>[s.name,s.id]));
+    c.name=name;c.students=names.map(n=>({id:oldMap.get(n)||uid(),name:n}));
+  }else state.classes.push({id:uid(),name,students:names.map(n=>({id:uid(),name:n}))});
+  save();show('classes');
+});
+document.getElementById('deleteClass').addEventListener('click',()=>{
+  if(!editClassId)return;
+  if(confirm('Delete this class? Existing records for these students will also be removed.')){
+    const c=classById(editClassId), ids=new Set(c.students.map(s=>s.id));
+    state.records=state.records.filter(r=>!ids.has(r.studentId));
+    state.classes=state.classes.filter(c=>c.id!==editClassId);
+    save();show('classes');
+  }
+});
+
+function renderSettings(){
+  document.getElementById('threshold').value=state.threshold;
+  const tb=document.getElementById('codeTable');tb.innerHTML='';
+  state.codes.forEach((code,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input class="c-code" type="text" maxlength="4" value="${attr(code.code)}"></td>
+      <td><input class="c-desc" type="text" value="${attr(code.desc)}"></td>
+      <td><select class="c-type"><option value="negative"${code.type==='negative'?' selected':''}>Negative</option><option value="positive"${code.type==='positive'?' selected':''}>Positive</option></select></td>
+      <td><input class="c-count check" type="checkbox"${code.counts?' checked':''}></td>
+      <td><button class="mini up">↑</button> <button class="mini down">↓</button></td>
+      <td><button class="mini del">Delete</button></td>`;
+    const sync=()=>{
+      code.code=tr.querySelector('.c-code').value.trim()||'?';
+      code.desc=tr.querySelector('.c-desc').value.trim()||'Behaviour';
+      code.type=tr.querySelector('.c-type').value;
+      code.counts=tr.querySelector('.c-count').checked;
+      if(code.type==='positive') code.counts=false;
+      save();renderSettings();
+    };
+    tr.querySelector('.c-code').addEventListener('change',sync);
+    tr.querySelector('.c-desc').addEventListener('change',sync);
+    tr.querySelector('.c-type').addEventListener('change',sync);
+    tr.querySelector('.c-count').addEventListener('change',sync);
+    tr.querySelector('.up').addEventListener('click',()=>{if(i>0){[state.codes[i-1],state.codes[i]]=[state.codes[i],state.codes[i-1]];save();renderSettings()}});
+    tr.querySelector('.down').addEventListener('click',()=>{if(i<state.codes.length-1){[state.codes[i+1],state.codes[i]]=[state.codes[i],state.codes[i+1]];save();renderSettings()}});
+    tr.querySelector('.del').addEventListener('click',()=>{
+      if(state.codes.length===1){flash('You need at least one behaviour code.');return}
+      if(confirm(`Delete ${code.code} – ${code.desc}?`)){state.codes=state.codes.filter(x=>x.id!==code.id);save();renderSettings()}
+    });
+    tb.appendChild(tr);
+  })
+}
+document.getElementById('threshold').addEventListener('change',e=>{
+  const n=Math.max(1,Math.min(99,parseInt(e.target.value||'3',10)));state.threshold=n;save();renderSettings()
+});
+document.getElementById('addCodeBtn').addEventListener('click',()=>{
+  state.codes.push({id:uid(),code:'N',desc:'New behaviour',type:'negative',counts:true});save();renderSettings()
+});
+
+function renderStudentSelect(){
+  const sel=document.getElementById('studentSelect'), students=allStudents();sel.innerHTML='';
+  if(!students.length){sel.innerHTML='<option>No students</option>';document.getElementById('studentSummary').innerHTML='';document.getElementById('studentHistory').innerHTML='';return}
+  students.sort((a,b)=>a.name.localeCompare(b.name)).forEach(s=>{
+    const o=document.createElement('option');o.value=s.id;o.textContent=`${s.name} — ${s.className}`;sel.appendChild(o)
+  });
+  renderStudentRecord(sel.value)
+}
+document.getElementById('studentSelect').addEventListener('change',e=>renderStudentRecord(e.target.value));
+function renderStudentRecord(id){
+  const s=allStudents().find(x=>x.id===id);if(!s)return;
+  const recs=state.records.filter(r=>r.studentId===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const counts={};state.codes.forEach(c=>counts[c.id]=0);recs.forEach(r=>{if(r.codeId in counts)counts[r.codeId]++});
+  document.getElementById('studentSummary').innerHTML=`<div class="class-card"><h3>${esc(s.name)}</h3><div class="meta">${esc(s.className)}</div><div style="margin-top:12px">${state.codes.map(c=>`<span class="badge ${c.type==='positive'?'pos':'neg'}">${esc(c.code)} ${counts[c.id]}</span>`).join(' ')}</div></div>`;
+  const hist=document.getElementById('studentHistory');hist.innerHTML='<h3 style="margin-top:18px">History</h3>';
+  if(!recs.length){hist.innerHTML+='<div class="empty">No records yet.</div>';return}
+  recs.forEach(r=>{
+    const c=state.codes.find(x=>x.id===r.codeId); const d=document.createElement('div');d.className='history-item';
+    d.innerHTML=`<span>${fmtDate(r.date)} — ${esc(c?c.code:'?')} ${esc(c?c.desc:'Deleted code')}</span>`;
+    hist.appendChild(d)
+  })
+}
+
+
+function renderHistoryFilters(){
+  const classSel=document.getElementById('histClass');
+  const studentSel=document.getElementById('histStudent');
+  const codeSel=document.getElementById('histCode');
+  const currentClass=classSel.value, currentStudent=studentSel.value, currentCode=codeSel.value;
+  classSel.innerHTML='<option value="">All classes</option>';
+  state.classes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;classSel.appendChild(o)});
+  if([...classSel.options].some(o=>o.value===currentClass)) classSel.value=currentClass;
+
+  studentSel.innerHTML='<option value="">All students</option>';
+  let studs=allStudents();
+  if(classSel.value) studs=studs.filter(s=>s.classId===classSel.value);
+  studs.sort((a,b)=>a.name.localeCompare(b.name)).forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;studentSel.appendChild(o)});
+  if([...studentSel.options].some(o=>o.value===currentStudent)) studentSel.value=currentStudent;
+
+  codeSel.innerHTML='<option value="">All behaviours</option>';
+  state.codes.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.code} — ${c.desc}`;codeSel.appendChild(o)});
+  if([...codeSel.options].some(o=>o.value===currentCode)) codeSel.value=currentCode;
+  renderHistory();
+}
+function renderHistory(){
+  const classId=document.getElementById('histClass').value;
+  const studentId=document.getElementById('histStudent').value;
+  const codeId=document.getElementById('histCode').value;
+  const from=document.getElementById('histFrom').value;
+  const to=document.getElementById('histTo').value;
+  let recs=state.records.slice();
+  if(classId) recs=recs.filter(r=>r.classId===classId);
+  if(studentId) recs=recs.filter(r=>r.studentId===studentId);
+  if(codeId) recs=recs.filter(r=>r.codeId===codeId);
+  if(from) recs=recs.filter(r=>r.date>=from);
+  if(to) recs=recs.filter(r=>r.date<=to);
+  recs.sort((a,b)=>b.date.localeCompare(a.date));
+
+  document.getElementById('histCount').textContent=`${recs.length} record${recs.length===1?'':'s'}`;
+  const totalsWrap=document.getElementById('classTotalsWrap');
+  const totalsTable=document.getElementById('classTotalsTable');
+  if(classId){
+    const c=classById(classId);
+    totalsWrap.classList.remove('hidden');
+    let head='<thead><tr><th>Student</th>'+state.codes.map(cd=>`<th>${esc(cd.code)}</th>`).join('')+'<th>Threshold count</th></tr></thead>';
+    let body='<tbody>';
+    c.students.forEach(s=>{
+      const sr=recs.filter(r=>r.studentId===s.id);
+      const counts=state.codes.map(cd=>sr.filter(r=>r.codeId===cd.id).length);
+      const thresholdIds=new Set(state.codes.filter(cd=>cd.type==='negative'&&cd.counts).map(cd=>cd.id));
+      const thresholdCount=sr.filter(r=>thresholdIds.has(r.codeId)).length;
+      body+=`<tr><td><strong>${esc(s.name)}</strong>${thresholdCount>=state.threshold?` <span class="flag">⚑ ${thresholdCount}</span>`:''}</td>`+
+        counts.map(n=>`<td>${n}</td>`).join('')+`<td><strong>${thresholdCount}</strong></td></tr>`;
+    });
+    body+='</tbody>';
+    totalsTable.innerHTML=head+body;
+  }else{
+    totalsWrap.classList.add('hidden');
+    totalsTable.innerHTML='';
+  }
+  const sum=document.getElementById('historySummary');
+  const list=document.getElementById('historyList');
+  sum.innerHTML='';list.innerHTML='';
+
+  if(studentId){
+    const s=allStudents().find(x=>x.id===studentId);
+    if(s){
+      const totals=state.codes.map(c=>({c,n:recs.filter(r=>r.codeId===c.id).length})).filter(x=>x.n);
+      sum.innerHTML=`<div class="class-card" style="margin-bottom:14px"><h3>${esc(s.name)}</h3><div class="meta">${esc(s.className)}</div><div style="margin-top:10px">${totals.length?totals.map(x=>`<span class="badge ${x.c.type==='positive'?'pos':'neg'}">${esc(x.c.code)} ${x.n}</span>`).join(' '):'No matching behaviours'}</div></div>`;
+    }
+  }
+  if(!recs.length){list.innerHTML='<div class="empty">No behaviour records match these filters.</div>';return}
+  recs.forEach(r=>{
+    const c=classById(r.classId);
+    const s=allStudents().find(x=>x.id===r.studentId);
+    const code=state.codes.find(x=>x.id===r.codeId);
+    const d=document.createElement('div');d.className='history-item';
+    const left=document.createElement('div');
+    left.innerHTML=`<strong>${esc(s?.name||'Unknown student')}</strong><div class="meta">${fmtDate(r.date)} · ${esc(c?.name||s?.className||'')}</div>`;
+    if(s){left.style.cursor='pointer';left.title='Open student record';left.addEventListener('click',()=>{show('students');const sel=document.getElementById('studentSelect');sel.value=s.id;renderStudentRecord(s.id)})}
+    const right=document.createElement('div');
+    right.innerHTML=`<span class="badge ${code?.type==='positive'?'pos':'neg'}">${esc(code?.code||'?')}</span> ${esc(code?.desc||'Deleted code')}`;
+    d.append(left,right);list.appendChild(d);
+  })
+}
+document.getElementById('histClass').addEventListener('change',()=>renderHistoryFilters());
+document.getElementById('histStudent').addEventListener('change',renderHistory);
+document.getElementById('histCode').addEventListener('change',renderHistory);
+document.getElementById('histFrom').addEventListener('change',renderHistory);
+document.getElementById('histTo').addEventListener('change',renderHistory);
+document.getElementById('clearHistFilters').addEventListener('click',()=>{
+  document.getElementById('histClass').value='';
+  document.getElementById('histStudent').value='';
+  document.getElementById('histCode').value='';
+  document.getElementById('histFrom').value='';
+  document.getElementById('histTo').value='';
+  renderHistoryFilters();
+});
+
+
+function csvDownload(name,rows){
+  const csv=rows.map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)
+}
+document.getElementById('exportDetailed').addEventListener('click',()=>{
+  const rows=[['Date','Class','Student','Code','Description','Type','Counts toward threshold']];
+  state.records.forEach(r=>{
+    const c=classById(r.classId), s=c?.students.find(x=>x.id===r.studentId)||allStudents().find(x=>x.id===r.studentId), code=state.codes.find(x=>x.id===r.codeId);
+    rows.push([r.date,c?.name||s?.className||'',s?.name||'',code?.code||'',code?.desc||'',code?.type||'',code?.counts?'Yes':'No'])
+  });csvDownload('teacher-log-detailed.csv',rows)
+});
+document.getElementById('exportSummary').addEventListener('click',()=>{
+  const heads=['Class','Student',...state.codes.map(c=>c.code),'Counting negatives'];
+  const rows=[heads];
+  allStudents().forEach(s=>{
+    const recs=state.records.filter(r=>r.studentId===s.id);
+    rows.push([s.className,s.name,...state.codes.map(c=>recs.filter(r=>r.codeId===c.id).length),countForStudent(s.id)])
+  });csvDownload('teacher-log-summary.csv',rows)
+});
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function attr(s){return esc(s)}
+
+document.getElementById('saveConnection').addEventListener('click',async()=>{
+  const url=document.getElementById('sbUrl').value.trim(), key=document.getElementById('sbKey').value.trim();
+  if(!/^https:\/\/.+\.supabase\.co\/?$/.test(url)){flash('Check the Project URL.');return}
+  if(!key){flash('Enter the Publishable Key.');return}
+  localStorage.setItem('teacherLogSbUrl',url.replace(/\/$/,''));localStorage.setItem('teacherLogSbKey',key);
+  if(!initClient()){flash('Could not initialise Supabase.');return}
+  document.getElementById('connectionFields').classList.add('hidden');
+  document.getElementById('loginFields').classList.remove('hidden');
+  document.getElementById('syncStatus').textContent='Connection saved. Sign in or create your Teacher Log account.';
+});
+document.getElementById('signIn').addEventListener('click',async()=>{
+  if(!sb)return;
+  const email=document.getElementById('loginEmail').value.trim(), password=document.getElementById('loginPassword').value;
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error){flash(error.message);return} await afterAuth(data.user);
+});
+document.getElementById('signUp').addEventListener('click',async()=>{
+  const btn=document.getElementById('signUp');
+  try{
+    if(!sb){flash('Supabase connection is not ready.');return}
+    const email=document.getElementById('loginEmail').value.trim(), password=document.getElementById('loginPassword').value;
+    if(!validEmail(email)){flash('Enter a valid email address.');return}
+    if(password.length<6){flash('Use a password of at least 6 characters.');return}
+    btn.disabled=true; btn.textContent='Creating…'; flash('Creating account…');
+    const {data,error}=await sb.auth.signUp({email,password});
+    if(error){flash('Account not created: '+error.message);return}
+    if(data.user && data.session) await afterAuth(data.user);
+    else flash('Account created. Check your email for a confirmation message, then return here and sign in.');
+  }catch(e){flash('Account not created: '+(e?.message||String(e)))}
+  finally{btn.disabled=false;btn.textContent='Create account'}
+});
+(async()=>{
+  const c=connection();
+  if(c.url&&c.key){
+    document.getElementById('sbUrl').value=c.url;document.getElementById('sbKey').value=c.key;
+    if(initClient()){
+      const {data}=await sb.auth.getSession();
+      if(data.session?.user){await afterAuth(data.session.user)}
+      else{document.getElementById('connectionFields').classList.add('hidden');document.getElementById('loginFields').classList.remove('hidden');}
+    }
+  }
+})();
+})();
+</script>
+</body>
+</html>
